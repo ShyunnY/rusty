@@ -1,4 +1,6 @@
 # cargo
 /target
 
+# ignore editor
 .idea
+.vscode

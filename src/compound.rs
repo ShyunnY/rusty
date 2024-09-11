@@ -161,8 +161,8 @@ fn _string() {
 
     // 2). String转换为&str    (本质上是取引用, 实际上这种灵活用法是因为 deref 隐式强制转换)
     let string_to_str = String::from("hello,python");
-    greet_string(&string_to_str);
-    greet_string(&string_to_str[6..]);
+    _greet_string(&string_to_str);
+    _greet_string(&string_to_str[6..]);
 
     // 3). 字符串索引和字符串切片注意
     // 在rust中, 由于字符串使用unicode类型, utf-8编码, 不能确定 "s[1] "一定能落在字符串内部字符的边界
@@ -294,7 +294,7 @@ fn _string() {
     dbg!(sr);
 }
 
-fn greet_string(s: &str) {
+fn _greet_string(s: &str) {
     println!("string to str: {s}")
 }
 
