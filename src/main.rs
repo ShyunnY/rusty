@@ -1,10 +1,10 @@
-
-mod variable;
 mod basetype;
-mod ownership;
 mod compound;
 mod flow;
 mod matchpattern;
+mod method;
+mod ownership;
+mod variable;
 
 fn main() {
     // variable::_var();
@@ -12,5 +12,6 @@ fn main() {
     // ownership::_entry();
     // compound::_entry();
     // flow::_entry();
-    matchpattern::_entry();
+    // matchpattern::_entry();
+    method::_entry();
 }

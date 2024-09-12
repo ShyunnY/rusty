@@ -1,9 +1,172 @@
-use std::vec;
-
 pub fn _entry() {
     // 模式匹配最常用的就是 match 和 if let
+    // 什么叫模式匹配? 本质上就是让 模式与表达式进行匹配, 如果匹配成功代表true, 匹配失败代表false
+    // if let Some(5) == some {}    // 当模式匹配成功才会执行作用域内部的代码
+
     // _match_if_let();
     // _option();
+    _all_patterns();
+}
+
+fn _all_patterns() {
+    // (1). 匹配字面量值
+    let x: i32 = 3;
+    match x {
+        1 => println!("1"),
+        2 => println!("2"),
+        _ => println!("anything"),
+    }
+
+    // (2). 匹配命名变量
+    let x = Some(5);
+    let y = 10;
+    match x {
+        Some(10) => println!("x = 10"), // Some中的值不匹配x
+        Some(y) => println!("x = {y}"), // 这里进行了变量遮蔽, 在match作用域内, y=Some中匹配的值
+        _ => println!("anything"),
+    }
+    println!("y = {y}");
+
+    // (3). 单分支多模式 (可以使用" | "语法匹配多个模式，它代表 或的意思)
+    let x = 1;
+    match x {
+        1 | 2 => println!(r#""1 | 2""#),
+        _ => println!("anything!"),
+    }
+
+    // (4). 通过序列 "..=" 或者 ".." 匹配值的范围, "..=" 或者 ".." 语法允许你匹配一个闭区间序列内的值
+    // 序列只允许用于数字或字符类型, 原因是：它们可以连续，同时编译器在编译期可以检查该序列是否为空.
+    // 字符和数字值是 Rust 中仅有的可以用于判断是否为空的类型。
+    let x = 5;
+    match x {
+        1..5 => println!(r#"in [1,5)"#),  // 匹配 [1,5)
+        3..=5 => println!(r#"in [1,5]"#), // 匹配 [3,5] 区间
+        _ => println!("anything!"),
+    }
+
+    // (5). 模式匹配解构结构体
+    let mut p = Point { x: 1, y: 2 };
+    let Point { x, y } = p; // 直接解构同名字段
+    let Point { x: a, y: b } = p; // 使用其他变量名解构匹配
+    println!("同名解构 point x={x} y={y}");
+    println!("不同名解构 point x={a} y={b}");
+
+    p.x = 0;
+    match p {
+        Point { x: 0, y } => println!("point x=0, y={y}"), // 匹配 x=0 && y!=0
+        Point { x, y: 0 } => println!("point x={x} y=0"),  // 匹配 x!=0 && y=0
+        Point { x, y } => println!("point x={x} y={y}"),   // 匹配 x!=0 && y!=0
+    }
+
+    // (6). 解构枚举
+    // 这里老生常谈一句话, 模式匹配一样要类型相同: 也就是说 "expr" 需要与匹配的 "pattern" 一样的类型.
+    // 如果匹配 Message::Move , 那么我们需要确保与其定义的类型一致, 既使用 Message::Move { x, y }
+    let msg = Message::People(Stmt::Hello(String::from("hello, shyunny")));
+    match msg {
+        Message::Quit => println!("msg is quit"),
+        Message::Move { x, y } => println!("msg x = {x}, y = {y}"),
+        Message::Write(str) => println!("msg str = {str}"),
+        Message::People(Stmt::Hello(people_stmt)) => {
+            println!("msg people stmt hello: {people_stmt}") // 嵌套枚举解构, 实际上对于嵌套的结构体也是一样方式使用
+        }
+    }
+
+    // (7). 解构复杂结构体和数组
+    // 元组和结构体混合结构(双打hhh)
+    let ((a, b), Point { x, y }) = (('a', 'b'), p);
+    println!("complete a = {a} b = {b}");
+    println!("complete point x = {x} y = {y}");
+    // 数组
+    let arr: [i32; 2] = [00, 99];
+    let [a1, a2] = arr; // "注意数组结构用的是中括号!!!"
+    println!("arr a1 = {a1} a2 = {a2}");
+    // 不定长数组
+    let arr = [11, 22, 33];
+    let [a, ..] = arr; // match head
+    println!("head: a = {a}");
+    let [.., b] = arr;
+    println!("tail: b = {b}");
+
+    // (8). 使用 '_' 忽略模式中的值
+    // 有时忽略模式中的一些值是很有用的, 比如在 match 中的最后一个分支使用 _ 模式匹配所有剩余的值.
+    // 我们也可以在另一个模式中使用 _ 模式, 使用一个以下划线开始的名称, 或者使用 .. 忽略所剩部分的值
+    let numbers = (5, 4, 3, 2, 1);
+    match numbers {
+        // 可以在一个模式中的多处使用下划线来忽略特定值
+        (_, 4, _, _, _1) => println!("1 || 4"),
+        _ => println!("anything"),
+    }
+
+    // 使用下划线开头忽略未使用的变量. 如果创建一个变量又不使用, rust会给出一个警告, 认为这是一个bug
+    // 使用 '_' 和使用以下划线开头的名称有些微妙的不同：
+    // * 比如 '_x' 仍会将值绑定到变量
+    // * 而 "_" 则完全不会绑定
+    // 举个例子
+    let some = Some(String::from("hello,world"));
+    if let Some(_s) = some {
+        println!("found string!"); // 此时 String 的所有权已经移动到 _s 变量上, 后续我们不能再用了
+    }
+    let some1 = Some(String::from("hello,world"));
+    if let Some(_) = some1 {
+        println!("found string!"); // 此时 String 的所有权没有进行移动, 因为'_'并不会绑定变量, 后续我们还可以用 some1
+    }
+    println!("some1: {:?}", some1);
+
+    // 用 ".." 忽略剩余值
+    // 注意: '..' 不能放在两边, 否则会导致产生歧义
+    let tuple: (i32, i32, i32, i32) = (1, 2, 3, 4);
+    match tuple {
+        (head, ..) => println!("tuple head: {head}"),
+    }
+
+    // (9). 匹配守卫
+    // 匹配守卫（match guard）是一个位于 match 分支模式之后的 "额外if条件", 它能为分支模式提供更进一步的匹配条件.
+    let some = Some(5);
+    let y = 3;
+    match some {
+        Some(10) => println!("some is 10"),
+        // 使用了匹配守卫, 进行进一步的匹配
+        Some(n) if n > y => println!(" some n({n}) > y({y})"),
+        _ => println!("nothing!"),
+    }
+    // 也可以在匹配守卫中使用 '或运算符 |' 来指定多个模式, 同时匹配守卫的条件会作用于所有的模式
+    let x = 4;
+    let y = false;
+    match x {
+        // 等价于 => ((1|2|3) && y == true)
+        1 | 2 | 3 if y => println!("ok"),
+        _ => println!("error"),
+    }
+
+    // (10). '@'绑定
+    // @（读作 at）运算符允许为一个字段绑定另外一个变量
+    match 2 {
+        // 放在这里相当于将匹配的值绑定到 num 变量上
+        num @ (1 | 2 | 3) => println!("num = {num}"),
+        _ => {}
+    }
+    // '@'的前面是绑定, 后面是解构
+    // 下面就是一个例子 ⬇️
+    let p @ Point { x, y } = Point { x: 1, y: 2 };
+    println!("x={x} y={y}");
+    println!("p: {:?}", p);
+}
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    People(Stmt),
+}
+
+enum Stmt {
+    Hello(String),
+}
+
+#[derive(Debug)]
+struct Point {
+    x: i32,
+    y: i32,
 }
 
 fn _pattern() {
