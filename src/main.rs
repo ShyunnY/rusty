@@ -1,6 +1,7 @@
 mod basetype;
 mod compound;
 mod flow;
+mod generic;
 mod matchpattern;
 mod method;
 mod ownership;
@@ -13,5 +14,6 @@ fn main() {
     // compound::_entry();
     // flow::_entry();
     // matchpattern::_entry();
-    method::_entry();
+    // method::_entry();
+    generic::_entry();
 }
