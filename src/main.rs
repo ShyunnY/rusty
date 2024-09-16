@@ -5,6 +5,7 @@ mod generic;
 mod matchpattern;
 mod method;
 mod ownership;
+mod traits;
 mod variable;
 
 fn main() {
@@ -15,5 +16,8 @@ fn main() {
     // flow::_entry();
     // matchpattern::_entry();
     // method::_entry();
-    generic::_entry();
+    // generic::_entry();
+
+    // 特征
+    traits::_entry();
 }
