@@ -5,6 +5,7 @@ mod generic;
 mod matchpattern;
 mod method;
 mod ownership;
+mod traitobj;
 mod traits;
 mod variable;
 
@@ -19,5 +20,8 @@ fn main() {
     // generic::_entry();
 
     // 特征
-    traits::_entry();
+    // traits::_entry();
+
+    // 特征对象
+    traitobj::_entry();
 }
