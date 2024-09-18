@@ -1,3 +1,4 @@
+mod advancetrait;
 mod basetype;
 mod compound;
 mod flow;
@@ -23,5 +24,8 @@ fn main() {
     // traits::_entry();
 
     // 特征对象
-    traitobj::_entry();
+    // traitobj::_entry();
+
+    // 深入特征
+    advancetrait::_entry();
 }
