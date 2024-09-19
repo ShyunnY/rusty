@@ -59,8 +59,8 @@ pub fn _entry() {
     screen.run();
 
     // 1. 这种情况下, 我们用的是借用特征对象, 此时"所有权不移动"
-    let button = Button {};
-    drawing_dyn(&button);
+    let button: &dyn Draw = &Button {};
+    drawing_dyn(button);
 
     // 2. 这种情况下, 我们使用智能指针管理分配在堆上的对象, box会拥有所有权, 此时"所有权移动"
     let select_box = Box::new(SelectBox {});
