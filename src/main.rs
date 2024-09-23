@@ -3,12 +3,14 @@ mod basetype;
 mod compound;
 mod flow;
 mod generic;
+mod haaashmap;
 mod matchpattern;
 mod method;
 mod ownership;
 mod traitobj;
 mod traits;
 mod variable;
+mod vector;
 
 fn main() {
     // variable::_var();
@@ -27,5 +29,11 @@ fn main() {
     // traitobj::_entry();
 
     // 深入特征
-    advancetrait::_entry();
+    // advancetrait::_entry();
+
+    // vector 集合
+    // vector::_entry();
+
+    // haaaaash map
+    haaashmap::_entry();
 }
