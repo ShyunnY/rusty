@@ -4,6 +4,7 @@ mod compound;
 mod flow;
 mod generic;
 mod haaashmap;
+mod lifetime;
 mod matchpattern;
 mod method;
 mod ownership;
@@ -34,6 +35,9 @@ fn main() {
     // vector 集合
     // vector::_entry();
 
-    // haaaaash map
-    haaashmap::_entry();
+    // haaaaash map 哈希map
+    // haaashmap::_entry();
+
+    // lifetime 生命周期
+    lifetime::_entry();
 }
