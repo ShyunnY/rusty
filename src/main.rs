@@ -1,6 +1,9 @@
+use advancetrait::_entry;
+
 mod advancetrait;
 mod basetype;
 mod compound;
+mod err;
 mod flow;
 mod generic;
 mod haaashmap;
@@ -39,5 +42,8 @@ fn main() {
     // haaashmap::_entry();
 
     // lifetime 生命周期
-    lifetime::_entry();
+    // lifetime::_entry();
+
+    // err错误处理
+    err::_entry();
 }
