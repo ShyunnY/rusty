@@ -66,19 +66,19 @@ pub fn _entry() {
         n += 1;
     };
     println!("i;m coming2, ret={ret}");
-    
+
     // 最佳实践:
     // 1.遍历一个集合时, 我们最好使用迭代器去方法. 通过索引的方式会引入不必要的 'runtime边界检查'.
     // 2.直接使用迭代器可以在编译期就确保访问是有效的.
-    let demo = [55,44,33,22,11];
-    for (i,ele) in demo.iter().enumerate(){
+    let demo = [55, 44, 33, 22, 11];
+    for (i, ele) in demo.iter().enumerate() {
         println!("iter index={i} ele={ele}");
     }
 
     // 通过 labels 方式跳出嵌套循环
-    'outer: for _ in 0..3{
-        for _ in 0..2{
-            break 'outer;   // 直接break跳到标签定义的外层
+    'outer: for _ in 0..3 {
+        for _ in 0..2 {
+            break 'outer; // 直接break跳到标签定义的外层
         }
     }
 
@@ -88,5 +88,4 @@ pub fn _entry() {
     // let s = String::from("This");
     // let bor = &s;
     // let ss = *bor;
-
 }
