@@ -10,6 +10,7 @@ impl Cat {
 
 impl Dog {
     pub fn say(&self) {
-        println!("i'm {}", self.name)
+        println!("i'm {}", self.name);
+        crate::animals::fish::_fish_say();
     }
 }
