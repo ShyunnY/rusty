@@ -45,13 +45,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     // 多文件模块组合
     // multi_file_proj();
 
-    // uses 的技巧
+    // use 的技巧
     // uses::_entry();
 
-    docs::_entry();
+    // docs::_entry();
+    // rs::gem::get_me_gem();
+
+    // 格式化输出
+    fo::_entry();
 
     Ok(())
 }
+
+mod fo;
 
 mod uses;
 

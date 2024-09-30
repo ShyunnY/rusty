@@ -88,3 +88,64 @@ mod instructment;
 
 * rust的模块最后都是用于构造成模块树的
 * 整个模块树都是按照文件系统的方式进行组织(父,兄弟,子 对应了 `../`, `./`, `./xx/`)
+
+在 Rust 中, 模块系统是非常灵活的, 但有一些约定和规则:
+
+* 同级目录的模块: 当你在 `main.rs` 同级目录下创建 a.rs 和 b.rs 时，你可以直接在 main.rs 中使用 `mod a;` 和 `mod b;` 来加载这些模块。这是因为 Rust 默认会**将这些文件视为与 main.rs 同级的模块**.
+* 子目录的模块: 当你在 `main.rs` 的子目录 dir 下创建 c.rs 和 d.rs 时，你必须创建一个 `mod.rs` 文件。这个 mod.rs 文件实际上是 dir 模块的**根文件**. 你可以在 mod.rs 中定义 c 和 d 模块, 比如：
+
+```rust
+复制代码
+// dir/mod.rs
+pub mod c;
+pub mod d;
+```
+
+然后在 main.rs 中，你可以使用 `mod dir;` 来加载 dir 模块. 这个约定使得 Rust 能够清晰地组织模块和文件结构。
+
+**总结**
+* **同级文件直接用 mod 引入**.
+* **子目录需要一个 `mod.rs` 作为模块的根文件**. 这样做有助于更好地组织和管理复杂的模块结构.
+* 在 `main.rs` 的模块下，不需要根文件是因为 Rust **将 `main.rs` 视为项目的顶级模块**
+
+
+## `lib.rs` 的作用
+
+按文件描述, 它就是一个**库文件**, 整个package只能有一个. 那实战中它到底有什么用？不要它行不行？
+
+lib.rs 文件通常用于定义**库的公共接口和模块结构**
+
+假设当前有以下文件结构:
+
+```shell
+./src
+├── main.rs
+├── lib.rs
+```
+
+在 `lib.rs` 有以下内容:
+
+```rust
+// lib.rs
+
+pub mod gem {
+    pub fn get_me_gem() {
+        println!("Get me G.E.M. !!!")
+    }
+}
+```
+
+如果我们想使用 `lib.rs` 文件中 gem 模块的 `fn get_me_gem()`, 我们在 `main.rs` 需要使用 package 名开始向下引入:
+
+```rust
+// rs是我当前的 package 名
+rs::gem::get_me_gem();
+```
+
+### 那么我们该如何使用 lib ?
+
+**rust-analyzer 给出的答案: 请使用 lib 的名称作为路径进行导入**
+
+实际上我们一般会在 `lib.rs` 组织出公共的接口, 函数等等, 我们可以尝试在 `main.rs` 引入 `lib.rs` 导出的项
+
+> 在 Rust 中, 库的名称通常与 crate 的名称相同, 且在 Cargo.toml 文件中指定
