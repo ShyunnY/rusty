@@ -1,8 +1,8 @@
 # cargo
-/target
+findctl/target
+rust-base/target
+rust-base/demolib/restaurant/target
 
 # ignore editor
 .idea
 .vscode
-
-demolib/restaurant/target

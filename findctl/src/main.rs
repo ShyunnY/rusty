@@ -1,15 +1,17 @@
+use findctl::*;
 use std::env;
-use std::fs;
+use std::process;
+use termcolor::Color;
 
 fn main() {
-    let args: Vec<String> = env::args().into_iter().collect();
-    if args.len() != 2 {
-        panic!("params must equal 2!");
+    let config = Config::build(env::args()).unwrap_or_else(|err| {
+        eprintln!("{}", err);
+        process::exit(1);
+    });
+
+    write_color("query", &config.query, Color::Green);
+    if let Err(e) = run(config) {
+        eprintln!("run error: {}", e);
+        process::exit(1)
     }
-
-    let (query, file_path) = (&args[1], &args[2]);
-
-    let file_content = fs::read_to_string(file_path).unwrap();
-    println!("query: {}", query);
-    println!("{}", file_content);
 }
