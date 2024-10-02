@@ -1,5 +1,6 @@
+mod functional;
 mod lifetime;
 
 fn main() {
-    lifetime::statics::hello();
+    functional::closure::hello();
 }
