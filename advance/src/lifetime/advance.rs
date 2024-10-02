@@ -16,6 +16,7 @@ pub fn _hello() {
         struct Foo;
 
         impl Foo {
+            #[allow(dead_code)]
             fn mutable(&mut self) -> &Self {
                 &*self
             }
@@ -124,5 +125,125 @@ pub fn _hello() {
 
         let result = fun(|x: &i32| -> &i32 { x });
         assert_eq!(*result(&10), 10);
+    }
+
+    // (5) NLL(Non-Lexical Lifetime)
+    // 简单来说就是: 引用的生命周期正常来说应该从借用开始一直持续到作用域结束, 但是这种规则会让多引用共存的情况变得更复杂
+    // 所以NLL其实就是: 引用的生命周期从借用处开始, 一直"持续到最后一次使用"的地方(称其为非词法生命周期)
+    {
+        let mut msg = String::new();
+        let a = &msg;
+        let b = &msg;
+        println!("{a}-{b}"); // 实际上 a,b 的生命周期在此就会结束了, 因为后续并没有对其进行使用
+
+        let c = &mut msg;
+        println!("{c}"); // c 的生命周期在此结束, 后续也没有使用 c
+    }
+
+    // (6) Reborrow 再借用
+    // 再借用本质上是 Rust 编译器在处理函数调用或代码块时, 自动创建临时借用的过程.
+    // 再借用允许你在保持原有借用有效的同时, 临时创建一个新的借用
+    // 我们先来看一个例子
+    {
+        #[allow(dead_code)]
+        #[derive(Debug)]
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        impl Point {
+            #[allow(dead_code)]
+            fn move_to(&mut self, x: i32, y: i32) {
+                self.x = x;
+                self.y = y;
+            }
+        }
+
+        let mut point = Point { x: 1, y: 2 };
+        let p: &mut Point = &mut point;
+        let pp: &Point = &*p; // 这里通过对p进行了解引用和再借用, 此时在pp的生命周期内不能使用p(因为p是可变借用)
+        println!("{:?}", pp);
+        // 对于再借用而言, pp 再借用时不会破坏借用规则, 但是你不能在它的生命周期内再使用原来的借用 p
+        p.move_to(3, 4);
+    }
+
+    // (7)生命周期消除规则补充
+    // 除了三大基础生命周期消除规则, 其实rust还提供了其他消除规则
+    //
+    // 1. impl块消除
+    {
+        // impl<'a> Reader for BufReader<'a> {
+        //     // methods go here
+        //     // impl内部实际上没有用到'a
+        // }
+        //
+        // 我们可以写成以下形式, 通过 '_ 告诉编译器, 我们并没有使用到生命周期
+        // 注意: 生命周期参数也是类型的一部分(他是个泛型参数), 在实现的过程中, 不能把类型给丢了!
+        // impl Reader for BufReader<'_> {
+        //     // methods go here
+        // }
+    }
+
+    // (8) 一个复杂的例子
+    {
+        #[allow(dead_code)]
+        struct Interface<'b, 'a: 'b> {
+            manager: &'b mut Manager<'a>,
+        }
+
+        #[allow(dead_code)]
+        impl<'b, 'a: 'b> Interface<'b, 'a> {
+            pub fn noop(self) {
+                println!("interface consumed");
+            }
+        }
+
+        #[allow(dead_code)]
+        struct Manager<'a> {
+            text: &'a str,
+        }
+
+        #[allow(dead_code)]
+        struct List<'a> {
+            manager: Manager<'a>,
+        }
+
+        #[allow(dead_code)]
+        impl<'a> List<'a> {
+            // 我们给予了一个额外的生命周期参数 'b
+            // 这个'b 给予了 Interface 中的 manager, 'a 给了 Interface 中 manager 的text
+            // 所以此时 Interface 对 manager 的可变借用跟list不挂钩了, 之前是挂钩的, 因为用的都是 'a
+            pub fn get_interface<'b>(&'b mut self) -> Interface<'b, 'a>
+            where
+                'a: 'b,
+            {
+                Interface {
+                    manager: &mut self.manager,
+                }
+            }
+        }
+
+        #[allow(dead_code)]
+        fn xx() {
+            let mut list = List {
+                manager: Manager { text: "hello" },
+            };
+
+            list.get_interface().noop();
+
+            println!("Interface should be dropped here and the borrow released");
+
+            // 下面的调用可以通过，因为Interface的生命周期不需要跟list一样长
+            use_list(&list);
+        }
+
+        // 因为 use_list 对 List 进行了不可变借用, 并且使用到其内部的 manager
+        // 必须保证 manager 此时是不存在可变借用的
+        // 如果按照原来的 'a , 那么此时 Interface 中的 manager 还是持有跟list一样长的可变借用, 这违反了借用法则
+        // 所以给予了 'b 之后, Interface 中的 manager 没有持有这么长的可变借用了, 此时可以用
+        fn use_list(list: &List) {
+            println!("{}", list.manager.text);
+        }
     }
 }

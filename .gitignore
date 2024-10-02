@@ -2,6 +2,7 @@
 findctl/target
 rust-base/target
 rust-base/demolib/restaurant/target
+advance/target
 
 # ignore editor
 .idea

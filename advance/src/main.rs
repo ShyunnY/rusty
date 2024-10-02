@@ -1,5 +1,5 @@
 mod lifetime;
 
 fn main() {
-    lifetime::advance::_hello();
+    lifetime::statics::hello();
 }

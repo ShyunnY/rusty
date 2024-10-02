@@ -1,11 +1,13 @@
 LOG_TARGET = echo "\033[0;32m=== Running $@ ===\033[0m"
 
-rust-run:
+run:
 	@$(LOG_TARGET)
 	@cargo run
 
-rust-test:
+test:
+	@$(LOG_TARGET)
 	@cargo test
 
-rust-check:
+check:
+	@$(LOG_TARGET)
 	@cargo check
