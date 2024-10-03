@@ -301,7 +301,7 @@ pub fn hello() {
     // * 闭包也是有所有权的, 但是不同的闭包类型不一样: 有些闭包有Copy特征可以反复使用(Fn), 有些闭包没有Copy只能使用一次(FnMut,FnOnce)
 
     {
-        // fn d<F: FnMut + Copy>() {} // 可以看出这只能使用一次, 不可能实现Copy滴
+        // fn d<F: FnMut + Copy>() {} // 可以看出这是不可变的, 不可能实现Copy滴
         // fn d<F: Fn + Copy>() {} // 可以看出这可以使用Copy
     }
 }
