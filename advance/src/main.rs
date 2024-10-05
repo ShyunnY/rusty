@@ -1,7 +1,8 @@
 mod functional;
 mod intotype;
 mod lifetime;
+mod point;
 
 fn main() {
-    intotype::enumint::hello();
+    point::drops::hello();
 }

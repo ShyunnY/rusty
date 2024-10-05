@@ -94,7 +94,7 @@ pub fn hello() {
            再进一步, 我们使用完全限定语法来进行准确的函数调用:
             1. 首先编译器检查它是否可以直接调用 T::foo(value), 称之为值方法调用(self方式调用)
             2. 如果上一步调用无法完成(例如方法类型错误或者特征没有针对 Self 进行实现, 上文提到过特征不能进行强制转换)
-              那么编译器会尝试增加自动引用,例如会尝试以下调用: <&T>::foo(value) 和 <&mut T>::foo(value), "称之为引用方法调用"
+              那么编译器会 "尝试增加自动引用" ,例如会尝试以下调用: <&T>::foo(value) 和 <&mut T>::foo(value), "称之为引用方法调用"
             3. 若上面两个方法依然不工作, 编译器会试着解引用 T , 然后再进行尝试.
               这里使用了 Deref 特征 —— 若 T: Deref<Target = U> (T 可以被解引用为 U),
               那么编译器会使用 U 类型进行尝试, 称之为解引用方法调用
@@ -140,7 +140,7 @@ pub fn hello() {
               // Clone: fn(&self) -> Self
         */
         fn do_something1<T: Clone>(t: &T) {
-            let _cloned = t.clone(); // _cloned Type = &T
+            let _cloned = t.clone(); // _cloned Type = T
         }
 
         /*
