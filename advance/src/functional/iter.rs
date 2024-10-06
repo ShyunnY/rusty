@@ -175,7 +175,7 @@ pub fn hello() {
         // 这里使用了 迭代器适配器map, 由于迭代器适配器是惰性的, 我们必须通过消费者适配器来执行真正的消费动作
         // 才能够使得迭代器适配器执行
         // Vec<_> 意味着告诉编译器帮我们进行推导
-        let result: Vec<_> = arr.iter().map(|x| x + 1).collect();
+        let result: Vec<_> = arr.iter().map(|&x| x + 1).collect();
         println!("result: {:?}", result);
     }
     //

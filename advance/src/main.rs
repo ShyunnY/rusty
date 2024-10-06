@@ -4,5 +4,5 @@ mod lifetime;
 mod point;
 
 fn main() {
-    point::drops::hello();
+    point::cells::hello();
 }

@@ -85,3 +85,17 @@ pub struct Box<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 ```
+
+我们可以将所有权、借用规则与这些智能指针做一个对比：
+
+｜Rust 规则	 ｜ 智能指针带来的额外规则 ｜
+
+* 一个数据只有一个所有者 ｜ Rc/Arc让一个数据可以拥有多个所有者
+* 要么多个不可变借用，要么一个可变借用 ｜ RefCell实现编译期可变、不可变引用共存
+* 违背规则导致编译错误 ｜ 违背规则导致运行时panic
+
+## RefCell
+
+`RefCell` 具有内部可变性: **对一个不可变的值进行可变借用**
+
+内部可变性的核心用法: 通过包裹一层 `RefCell`, 成功的让 &self 中的不可变成为一个可变值, 然后实现对其的修改
