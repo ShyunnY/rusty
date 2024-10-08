@@ -5,5 +5,5 @@ mod lifetime;
 mod point;
 
 fn main() {
-    concurrency::threads::hello();
+    concurrency::syncs::hello();
 }
