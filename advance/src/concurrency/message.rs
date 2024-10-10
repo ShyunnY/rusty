@@ -24,6 +24,7 @@ pub fn hello() {
         1.tx,rx对应发送者和接收者, 它们的类型由编译器自动推导(或者手动标注类型注释). 如果确定了类型, 则只能发送/接受同一类型
         2.接收消息的操作 `rx.recv()` 会"阻塞当前线程", 直到读取到值或者通道被关闭(类似于Golang的阻塞channel)
         3.需要使用move将tx的所有权转移到子线程的闭包中(或者使用Arc咯)
+        4.rece读取信息是阻塞的!!!
 
         send和rece都会返回一个Result, 原因如下:
         1.reve被Drop了: 例如接收者被drop导致了发送的值不会被任何人接收, 此时继续发送毫无意义
@@ -143,7 +144,8 @@ pub fn hello() {
     // (8) 同步和异步的通道
     // Rust 标准库的mpsc通道其实分为两种类型: "同步" 和 "异步"
     //
-    // 1.默认情况下使用mpsc::channel创建的都是异步的通道( 也就是 "发送端发送信息是不会被阻塞的" )
+    // 1. 异步通道
+    // 默认情况下使用mpsc::channel创建的都是异步的通道( 也就是 "发送端发送信息是不会被阻塞的" )
     // 这看起来就像是Golang中的 "有缓冲通道", 发送者往里发完数据就走, 根本不会被阻塞!
     {
         let (send, rece): (Sender<String>, Receiver<String>) = mpsc::channel();
@@ -159,5 +161,125 @@ pub fn hello() {
         thread::sleep(time::Duration::from_millis(500));
         println!("(8.1) main线程睡眠500ms后");
         println!("(8.1) main线程 Got: {}", rece.recv().unwrap());
+    }
+    //
+    // 2. 同步通道
+    // 我们也可以将channel声明为同步的(发送消息是阻塞的)
+    // 同步通道发送消息是阻塞的, 只有在消息被接收后才解除阻塞
+    // 这看起来就像是Golang中的 "无缓冲通道", 发送者往里发完数据后会阻塞到接受者读取完数据才能走
+    //
+    // 主线程由于睡眠被阻塞导致无法接收消息, 因此子线程的发送也一直被阻塞, 直到主线程结束睡眠并成功接收消息后发送才成功:
+    // 说明"只有接收消息彻底成功后, 发送消息才算完成"
+    {
+        let (send, rece) = mpsc::sync_channel(0);
+
+        thread::spawn(move || {
+            println!("(8.2) 子线程发送前");
+            send.send(String::from("delay message")).unwrap();
+            println!("(8.2) 子线程发送后(我的发送被阻塞了!)");
+        });
+
+        // main线程睡眠模拟rece阻塞
+        println!("(8.2) main线程睡眠500ms前");
+        thread::sleep(time::Duration::from_millis(500));
+        println!("(8.2) main线程睡眠500ms后");
+        println!("(8.2) main线程 Got: {}", rece.recv().unwrap());
+    }
+    //
+    // 3. 消息缓存
+    // 在创建同步通道时, 我们传递了一个参数0: mpsc::sync_channel(0), 这是什么意思呢？
+    // 该值可以用来指定同步通道的消息缓存条数, 当你设定为 "N" 时,发送者就可以无阻塞的往通道中发送N条消息
+    // 当消息缓冲队列满了后, 新的消息发送将被阻塞(如果没有接收者消费缓冲队列中的消息, 那么第N+1条消息"就将触发发送阻塞")
+    // 这其实就类似于Golang的: ch := chan(int,2) // "创建一个指定大小的通道, 当消息堆积超出 N 时, 发送会被阻塞"
+    //
+    // 问题又来了: 异步通道创建时完全没有这个缓冲值参数 mpsc::channel(), 它的缓冲值怎么设置呢？
+    // 事实上异步通道的缓冲上限取决于你的内存大小, 不要撑爆就行
+    // 通道存放数据也会占用内存的, 所以我们尽量不要使用异步通道, 即使使用也要及时消费
+    {
+        let (send, rece) = mpsc::sync_channel(1);
+
+        thread::spawn(move || {
+            println!("(8.3) 子线程发送前");
+            send.send(String::from("delay message1")).unwrap();
+            println!("(8.3) 第一条信息的发送没有被阻塞");
+            send.send(String::from("delay message2")).unwrap();
+            println!("(8.3) 第二条信息的发送被阻塞了...");
+        });
+
+        // main线程睡眠模拟rece阻塞
+        println!("(8.3) main线程睡眠500ms前");
+        thread::sleep(time::Duration::from_millis(500));
+        println!("(8.3) main线程睡眠500ms后");
+        for ele in rece.into_iter() {
+            println!("(8.3) main线程 Got: {}", ele);
+            thread::sleep(time::Duration::from_millis(100));
+        }
+    }
+
+    // (9) 通道关闭（channel closed）
+    /*
+        之前我们数次提到了通道关闭, 并且提到了当通道关闭后, 发送消息或接收消息将会报错. 那么如何关闭通道呢？
+        很简单: 所有发送者被drop或者所有接收者被drop后, 通道会自动关闭
+
+        神奇的是: 这件事是在编译期实现的, 完全没有运行期性能损耗！只能说Rust的 Drop 特征 YYDS
+    */
+
+    // (10) 传输多种类型的数据
+    // 一个消息通道只能传输一种类型的数据, 如果你想要传输多种类型的数据, 可以为每个类型创建一个通道
+    // 你也可以使用枚举类型来实现, 或者使用特征对象来实现
+    // 有一点需要注意: Rust会"按照枚举中占用内存 "最大" 的那个成员进行内存对齐", 这意味着就算你传输的是枚举中占用内存最小的成员
+    // 它占用的内存依然和最大的成员相同, 因此会造成内存上的浪费
+    {
+        // example: 用枚举来发送不同类型信息
+        enum Message {
+            U8(u8),
+            STRING(String),
+        }
+
+        let (send, rece) = mpsc::channel();
+        thread::spawn(move || {
+            println!("(9) 发送U8信息");
+            send.send(Message::U8(10)).unwrap();
+
+            println!("(9) 发送STRING信息");
+            send.send(Message::STRING(String::from("enum msg")))
+                .unwrap();
+        });
+
+        // 读取是阻塞式的, 除非我们使用 try_rece()
+        // 或者等到send被 Drop 掉了
+        for ele in rece {
+            match ele {
+                Message::U8(v) => println!("(9) 接受到 Message::U8 数据 Got {}", v),
+                Message::STRING(v) => println!("(9) 接受到 Message::STRING 数据 Got {}", v),
+            }
+        }
+    }
+
+    // (10) 一个小坑
+    // 通道关闭的两个条件: 发送者全部drop或接收者被drop, 要结束for循环显然是要求"发送者全部drop"
+    // 如果我们不对原始的send进行 Drop, 则主线程会一直阻塞
+    // 在该作用域中, 对于rece来说存在4个'send', 线程中的三个send会在线程结束时自动Drop
+    // 那么在rece循环前, 主send如果不drop的话会导致永远有一个send存在, 那么for循环将会永远卡死
+    //
+    // 所以我们需要确保: 发送者全部 Drop 或接收者被 Drop
+    {
+        let (send, rece) = mpsc::channel();
+
+        for ele in 1..=3 {
+            let s_clone = send.clone();
+
+            thread::spawn(move || {
+                println!("(10) {} thread send msg", ele);
+                s_clone.send(ele).unwrap();
+            });
+        }
+
+        // 这个Drop很关键
+        drop(send);
+        for ele in rece {
+            println!("(10) rece msg: {}", ele);
+        }
+        println!("(10) Done!");
     }
 }

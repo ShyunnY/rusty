@@ -5,5 +5,5 @@ mod lifetime;
 mod point;
 
 fn main() {
-    concurrency::message::hello();
+    concurrency::atomics::hello();
 }
