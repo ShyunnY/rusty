@@ -1,6 +1,9 @@
 use core::time;
 use std::{
-    sync::atomic::{AtomicI32, Ordering},
+    sync::{
+        atomic::{AtomicI32, Ordering},
+        Arc,
+    },
     thread,
 };
 
@@ -50,8 +53,42 @@ pub fn hello() {
           比如你要对一个 atomic 自增 1, 同时希望该"操作之前和之后的读取或写入操作不会被重新排序"
         5.SeqCst顺序一致性: SeqCst就像"是AcqRel的加强版", 它不管原子操作是属于读取还是写入的操作, 只要某个线程有用到SeqCst的原子操作
           线程中该"SeqCst操作前的数据操作绝对不会被重新排在该SeqCst操作之后", 且该"SeqCst操作后的数据操作也绝对不会被重新排在SeqCst操作前"
+
+        6. 如果不知道怎么选择, 那么我们就优先使用SeqCst, 虽然会稍微减慢速度但是慢一点也比出现错误好
+        7. 多线程只计数 `fetch_add` 而不使用该值触发其他逻辑分支的简单使用场景, 可以使用Relaxed
     */
+
+    // (4) 在多线程中使用 Atomic 原子
     {
-        // example
+        // 在多线程中使用 Atomic 原子需要用 Arc 对其进行包裹(因为Atomic也具有所有权)
+        let data = Arc::new(AtomicI32::new(0));
+        for _ in 1..=100 {
+            let data = data.clone();
+            thread::spawn(move || {
+                data.fetch_add(1, Ordering::Relaxed);
+            });
+        }
+
+        thread::sleep(time::Duration::from_secs(1));
+        println!("(2) Got data: {}", data.clone().load(Ordering::Relaxed));
+        assert_eq!(100, data.load(Ordering::Relaxed));
     }
+
+    // (5) Atomic 能替代锁吗???
+    /*
+       那么原子类型既然这么全能, 它可以替代锁吗？答案是不行：
+       1.对于复杂的场景下，锁的使用简单粗暴，不容易有坑
+       2.std::sync::atomic包中仅提供了数值类型的原子操作
+         AtomicBool, AtomicIsize, AtomicUsize, AtomicI8, AtomicU16等, 而锁可以"应用于各种类型"
+       3.在有些情况下必须使用锁来配合,例如使用Mutex配合Condvar
+    */
+
+    // (6) Atomic 的应用场景:
+    /*
+       事实上 `Atomic` 虽然对于用户不太常用, 但是对于高性能库的开发者、标准库开发者都非常常用
+       它是并发原语的基石, 除此之外还有一些场景适用:
+       1."无锁"(lock free): 不用加锁的数据结构
+       2."全局变量": 例如全局自增 ID, 在后续章节会介绍
+       3."跨线程计数器": 例如可以用于统计指标
+    */
 }
