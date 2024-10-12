@@ -1,9 +1,10 @@
 mod concurrency;
 mod functional;
+mod globalvar;
 mod intotype;
 mod lifetime;
 mod point;
 
 fn main() {
-    concurrency::sends::hello();
+    globalvar::var::hello();
 }
