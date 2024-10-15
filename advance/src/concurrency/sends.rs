@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc},
-    thread, vec,
-};
+use std::{sync::Arc, thread, vec};
 
 #[allow(dead_code)]
 pub fn hello() {

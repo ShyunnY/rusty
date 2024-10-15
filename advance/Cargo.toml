@@ -6,3 +6,9 @@ edition = "2021"
 [dependencies]
 num_enum = "0.7.3"
 thread_local = "1.1"
+# async 运行时
+futures = "0.3.31"
+# 运行时加载静态变量
+lazy_static = "1.5.0"
+# rust连接外部库
+cc = "1.1.30"
