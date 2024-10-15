@@ -1,5 +1,6 @@
 mod asyncs;
 mod concurrency;
+mod errors;
 mod functional;
 mod globalvar;
 mod intotype;
@@ -9,5 +10,5 @@ mod point;
 mod trust;
 
 fn main() {
-    macros::start::hello();
+    errors::hello();
 }
