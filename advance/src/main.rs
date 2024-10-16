@@ -10,5 +10,5 @@ mod point;
 mod trust;
 
 fn main() {
-    errors::hello();
+    asyncs::start::hello();
 }
