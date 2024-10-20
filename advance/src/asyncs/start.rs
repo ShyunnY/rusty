@@ -1,10 +1,11 @@
 use std::{
     future::Future,
-    time::{self, Instant},
+    sync::Mutex,
+    time::{self, Duration, Instant},
 };
 
 use async_std::task::sleep;
-use futures::executor::block_on;
+use futures::{channel::mpsc, executor::block_on, SinkExt};
 
 #[allow(dead_code)]
 pub fn hello() {
@@ -132,9 +133,9 @@ fn two() {
 
         async fn exec() {
             let ret = foo().await;
-            println!("2.1 ret got {}", ret);
+            println!("2 ret got {}", ret);
             let ret = bar().await;
-            println!("2.1 ret got {}", ret);
+            println!("2 ret got {}", ret);
         }
 
         block_on(exec());
@@ -175,9 +176,135 @@ fn two() {
                 foo(&x).await
             }
         }
+    }
 
-        async fn good<'a, 'b>(_x: &'a i32, y: &'b i32) -> &'b i32 {
-            y
+    // 2. async的所有权移动
+    // async 允许我们使用 "move" 关键字来将环境中变量的所有权转移到语句块内
+    // 就像闭包那样! 好处是你不再发愁该如何解决借用"生命周期的问题", 坏处就是"无法跟其它代码实现对变量的共享"
+    {
+        // 此时变量属于共享阶段
+        async fn share() {
+            let msg = "this is msg!".to_string();
+
+            let future_1 = async {
+                println!("2.1 share context1: {}", msg);
+            };
+            let future_2 = async {
+                println!("2.1 share context2: {}", msg);
+            };
+
+            futures::join!(future_1, future_2);
         }
+        block_on(share());
+
+        // 通过 move 关键字将所有权转移到闭包内的 Future 中
+        // 由于 `async move` 会捕获环境中的变量，因此只有一个 `async move` 语句块可以访问该变量，
+        // 但是它也有非常明显的好处: "变量可以转移到返回的 Future 中, 不再受借用生命周期的限制"
+        async fn unshare() {
+            let msg = "this is msg!".to_string();
+
+            let future_1 = async move {
+                println!("2.1 unshare context1: {}", msg);
+                // 所有权还可以进行返回
+                msg
+            };
+
+            // 此时不能用下列代码, 因为所有权已经被转移进 future_1
+            // let future_2 = async {
+            //     println!("2.1 share context2: {}", msg);
+            // };
+
+            futures::join!(future_1);
+        }
+        block_on(unshare());
+    }
+
+    // 3.当 ".await" 遇见多线程执行器
+    /*
+    需要注意的是: 当使用多线程 Future 执行器( executor )时, Future 可能"会在线程间被移动"(顾名思义, 多线程执行器)
+    因此 async 语句块中的变量必须要"能在线程间传递"(如果不能在线程中移动, 可能导致 future 切换线程执行时报错)
+
+    至于 Future 会在线程间移动的原因是:它内部的任何 ".await" 都可能导致它 "被切换到一个新线程上去执行"
+    由于需要在多线程环境使用, 意味着 Rc、 RefCell 、没有实现 Send 的所有权类型、没有实现 Sync 的引用类型,它们都是不安全的
+    因此无法被使用
+
+    类似的原因: 在 ".await" 时使用普通的锁也不安全, 例如 Mutex
+    原因是: 它可能会导致线程池被锁!
+    当一个任务获取锁A后没有进行释放(可能内部调用了 .await 阻塞), 若它将线程的控制权还给执行器,
+    然后执行器又调度运行另一个任务,该任务也去尝试获取了锁A, 结果当前线程会直接卡死, 最终陷入死锁中
+
+    因此为了避免这种情况的发生, 我们需要使用 futures 包下的锁 futures::lock 来替代 Mutex 完成任务
+    */
+    {
+        // example
+        static LOCK: Mutex<bool> = Mutex::new(false);
+        async fn foo() {
+            // 获取锁
+            println!("3. foo 尝试获取锁");
+            let mut v = LOCK.lock().unwrap();
+            *v = true;
+            println!("3. foo 获取锁");
+            // 此时尝试阻塞
+            async {
+                println!("3. foo 阻塞");
+                sleep(Duration::from_secs(1)).await;
+            }
+            .await;
+        }
+
+        async fn bar() {
+            // 获取锁
+            println!("3. bar 尝试获取锁");
+            let mut v = LOCK.lock().unwrap();
+            *v = true;
+            println!("3. bar 获取锁");
+            // 此时尝试阻塞
+            async {
+                println!("3. bar 阻塞");
+                sleep(Duration::from_secs(1)).await;
+            }
+            .await;
+        }
+
+        async fn exec() {
+            // futures::join! 宏只能在异步函数、闭包和async块内部使用, 本质上类似于 => futures::join!(a.awit,b.await)
+            // 所以 futures::join! 联合其async函数也是需要通过执行器来执行的~
+            futures::join!(foo());
+
+            // 以下语句会导致阻塞
+            // futures::join!(foo(), bar());
+        }
+
+        block_on(exec());
+    }
+
+    // 4. Stream流处理
+    // Stream 特征类似于 Future 特征, 但是前者在完成前可以生成多个值.
+    // 这种行为跟标准库中的 Iterator 特征倒是颇为相似
+    /*
+        存在以下三种情况:
+        1.`Ok(Some(t))`: 通道中存在消息对应了 => Poll::Ready(Some(T))
+        2.`Ok(None)`: 当通道关闭且队列中没有消息时对应了 => Poll::Ready(None)
+        3.`Err(e)`: 当没有可用消息，但通道尚未关闭时对应了 => Poll::Pending
+    */
+    {
+        // 关于 Stream 的一个常见例子是消息通道（futures 包中的）的消费者 Receiver.
+        // 每次有消息从 Send 端发送后, 它都可以接收到一个 Some(val) 值
+        // 一旦 Send 端关闭(drop), 且消息通道中没有消息后, 它会接收到一个 None 值
+
+        async fn demo() {
+            let (mut tx, mut rx) = mpsc::channel(5);
+            tx.send(1).await.unwrap();
+            tx.send(2).await.unwrap();
+            tx.send(3).await.unwrap();
+            drop(tx);
+
+            assert_eq!(Some(1), rx.try_next().unwrap());
+            assert_eq!(Some(2), rx.try_next().unwrap());
+            assert_eq!(Some(3), rx.try_next().unwrap());
+            assert_eq!(None, rx.try_next().unwrap());
+        }
+
+        block_on(demo());
     }
 }
