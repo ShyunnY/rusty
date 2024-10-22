@@ -11,5 +11,5 @@ mod point;
 mod trust;
 
 fn main() {
-    asyncs::future::hello();
+    asyncs::multifuture::hello();
 }
