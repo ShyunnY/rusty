@@ -4,6 +4,7 @@ rust-base/target
 rust-base/demolib/restaurant/target
 advance/target
 zero/target
+rudis/target
 
 # ignore editor
 .idea

@@ -14,7 +14,7 @@ pub fn hello() {
     two();
 
     // 3. 在特征中使用 async
-    three();
+    // three();
 }
 
 #[allow(dead_code)]
