@@ -7,7 +7,13 @@ edition = "2021"
 # features = ["full"] 代表引入该 create 的所有特性功能
 # 在很多时候, 不是每个应用都需要所有的这些特性, 为了优化编译时间和最终生成可执行文件大小、内存占用大小，应用可以对这些特性进行可选引入
 tokio = { version = "1.41.0", features = ["full"] }
+# 官方的 mini-redis
 mini-redis = "0.4.1"
+bytes = "1.8.0"
+# 日志特征 API 库
+log = "0.4.22"
+# 日志库的实现
+env_logger = "0.11.5"
 
 [[example]]
 name = "rudis-client"

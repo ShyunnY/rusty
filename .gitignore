@@ -5,6 +5,7 @@ rust-base/demolib/restaurant/target
 advance/target
 zero/target
 rudis/target
+todolist/target
 
 # ignore editor
 .idea

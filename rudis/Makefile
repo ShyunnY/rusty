@@ -1,12 +1,16 @@
 LOG_TARGET = echo "\033[0;32mRunning $@...\033[0m"
 
-server-run:
+rudis:
 	@$(LOG_TARGET)
-	@cargo run
+	@RUST_LOG=debug cargo run --bin rudis
 
-example:
+server:
 	@$(LOG_TARGET)
-	@cargo run --example rudis-client
+	@RUST_LOG=debug cargo run --bin server
+
+client:
+	@$(LOG_TARGET)
+	@RUST_LOG=debug cargo run --bin client
 
 check:
 	@$(LOG_TARGET)

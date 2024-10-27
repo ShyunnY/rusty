@@ -63,3 +63,29 @@ async fn main() {
 ```
 
 其实跟自引用很类似, 在一个 Future 中如果 `跨 .await` 执行将需要考虑更多事情(因为这代表不一定在一次 `poll()` 就能执行完毕, 就可能会发生线程切换执行问题)。
+
+### 惰性的 Async
+
+`async` 操作在 Tokio 中是惰性的:
+
+```rust
+loop {
+    // 我们没有显式调用 .await 执行它, 所以并不会执行该任务
+    async_op();
+}
+```
+
+当我们显示使用 `.await` 时, 此时会执行该 Future 。但是也会等待该 Future 执行完毕才会进行下一轮循环继续执行下一个 Future。
+
+```rust
+loop {
+    // 当前 async_op 完成后, 才会开始下一次循环执行 Future
+    async_op().await;
+}
+```
+
+**原因如下:**
+
+在 Tokio 中, `fn main()`函数其实是**一个巨大的 Future** 。在 Rust 的异步编程中，在一个 Future 调用 `.await` 时**会阻塞等待该 Future 完成(父Future => 子Future)**。 
+
+除非我们在该 Future 中同时运行多个 子Future(父Future => 多个子Future), 类似于我们使用 `tokio::spawn` 启动一个子Future。 如果在该子Future中调用 `.await` 被阻塞了，那么就会**切换调度运行**另外一个 `tokio::spawn` 启动的的子Future
