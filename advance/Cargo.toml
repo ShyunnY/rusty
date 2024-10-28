@@ -20,3 +20,5 @@ async-std = "1.13.0"
 async-trait = "0.1.83"
 # pingora库
 pingora = { version = "0.3.0", features = ["lb"] }
+# tokio
+tokio = { version = "1.41.0", features = ["full"] }

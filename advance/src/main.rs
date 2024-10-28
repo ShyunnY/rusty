@@ -9,8 +9,10 @@ mod intotype;
 mod lifetime;
 mod macros;
 mod point;
+mod tokios;
 mod trust;
 
-fn main() {
-    coco::transport::quick_start();
+#[tokio::main]
+async fn main() {
+    tokios::futures::hello().await;
 }
