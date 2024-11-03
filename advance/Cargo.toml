@@ -18,7 +18,9 @@ anyhow = "1.0.89"
 async-std = "1.13.0"
 # 异步 trait 库
 async-trait = "0.1.83"
-# pingora库
+# pingora 库
 pingora = { version = "0.3.0", features = ["lb"] }
-# tokio
+# tokio runtime 库
 tokio = { version = "1.41.0", features = ["full"] }
+# tokio stream 库
+tokio-stream = "0.1.16"

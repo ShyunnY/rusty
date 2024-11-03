@@ -1,6 +1,5 @@
 mod asyncs;
 mod circle;
-mod coco;
 mod concurrency;
 mod errors;
 mod functional;
@@ -14,5 +13,5 @@ mod trust;
 
 #[tokio::main]
 async fn main() {
-    tokios::futures::hello().await;
+    tokios::sync_and_async().await;
 }

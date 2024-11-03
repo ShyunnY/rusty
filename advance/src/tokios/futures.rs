@@ -8,15 +8,99 @@ use std::{
 };
 
 use futures::future::poll_fn;
-use tokio::time::sleep;
-use tokio::{net::TcpListener, sync::oneshot};
+use tokio::{
+    net::TcpListener,
+    sync::{
+        mpsc::{Receiver, Sender},
+        oneshot,
+    },
+};
+use tokio::{sync::mpsc, time::sleep};
 
 #[allow(dead_code)]
 pub async fn hello() {
     // 和其它语言不同, Rust 中的 Future 不代表一个发生在后台的计算, 而是 Future 就代表了计算本身
     // 因此 Future 的所有者 '有责任去推进该计算过程的执行'。例如通过 Future::poll 函数。听上去好像还挺复杂？但是大家不必担心，因为这些都在 Tokio 中帮你自动完成了 :)
 
-    select().await;
+    // select().await;
+    select_advance().await;
+}
+
+#[allow(dead_code)]
+async fn select_advance() {
+    // select 中的借用
+    // 当在 Tokio 中生成( spawn )任务时, 其 async 语句块必须拥有其中数据的 "所有权"
+    // 而 select! 并没有这个限制, 它的每个分支表达式可以直接借用数据, 然后进行并发操作。
+    // 只要遵循 Rust 的借用规则, 多个分支表达式可以 "不可变的借用同一个数据", 或者 "在一个表达式可变的借用某个数据"
+    //
+    /*
+       这里其实有一个很有趣的题外话，由于 TCP 连接过程是在模式中发生的
+       因此当某一个连接过程失败后，它通过 ? 返回的 Err 类型并无法匹配 Ok，因此另一个分支会继续被执行，继续连接。
+       如果你把连接过程放在了结果处理中，那连接失败会直接从 race 函数中返回，而不是继续执行另一个分支中的连接！
+    */
+    {
+        // 借用规则在分支表达式和结果处理中存在很大的不同.
+        // 例如上面代码中: 我们在两个分支表达式中分别对 data 做了不可变借用, 这当然 ok
+        // 但是若是两次可变借用, 那编译器会立即进行报错
+        // 原因就在于：select!会保证只有一个分支的结果处理会被运行, 然后在运行结束后, 另一个分支会被直接丢弃
+        // 所以我们在结果中使用, 是能够保证只有一个分支的结果被执行!!!
+        // 如果我们在表达式中使用, 是有可能出现多个分支表达式被执行(因为分支的模式不匹配, 会往下执行...)
+        async fn foo(data: &str) {
+            // 我们可以在多个分支的表达式中进行: 不可变借用
+            // 但是我们无法在多个分支的表达式中进行: 可变借用
+            tokio::select! {
+                _ = async{
+                    // data = ""; // 这将会报错
+                    println!("branchA: data got {}",data);
+                } => {}
+                _ = async{
+                    println!("branchB: data got {}",data);
+                } => {}
+            };
+        }
+
+        foo("borrow").await;
+    }
+
+    // 2. 循环
+    // select! 经常与 loop 循环配合使用
+    /*
+       在循环中使用 select! 最大的不同就是: 当某一个分支执行完成后, select! 会继续循环等待并执行下一个分支
+       直到所有分支最终都完成, 最终匹配到 else 分支, 然后通过 break 跳出循环
+
+       老生常谈的一句话: select! 中哪个分支先被执行是无法确定的, 因此不要依赖于分支执行的顺序！
+    */
+    {
+        async fn foo() {
+            // 我们通过 loop 重复执行 select 中的分支
+            // 当 select! 中所有的分支都模式不匹配了 -- 执行完毕了
+            // 此时我们执行 else 跳出循环
+            loop {
+                tokio::select! {
+                    Some(_) = async{
+                        Option::<i32>::None
+                    } => {}
+                    Some(_) = async{
+                        Option::<i32>::None
+                    } => {}
+                    else => {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: 3. 恢复异步执行
+
+    // TODO: 4. 修改一个分支
+
+    // tokio::spawn 和 tokio::select! 的区别
+    // + tokio::spawn 函数会启动新的任务来运行一个异步操作,
+    //   每个任务都是一个独立的对象可以单独被 Tokio 调度运行, 因此两个不同的任务的调度都是 '独立进行的'
+    //   甚至于它们可能会运行在'两个不同的操作系统线程'上。鉴于此，生成的任务和生成的线程有一个相同的限制: 不允许对外部环境中的值进行借用。
+    // + tokio::select! 宏就不一样了, 它在同一个任务中并发运行所有的分支。
+    //   正是因为这样, 在同一个任务中, 这些分支无法被同时运行。 select! 宏在单个任务中实现了'多路复用'的功能
 }
 
 #[allow(dead_code)]
@@ -58,7 +142,7 @@ async fn select() {
     // 任何一个 select 分支结束后，都会继续执行接下来的代码
 
     // 2. select! 语法
-    // 语法: " <模式> = <async 表达式> => <结果处理> "
+    // 语法:  <模式> = <async 表达式> => <结果处理>
     // 当 select 宏开始执行后, 所有的分支会开始并发的执行(注意: 是并发的执行!).
     // 当任何一个表达式完成时, 会将结果跟模式进行匹配. 若匹配成功, 则剩下的表达式会被释放(Drop, 任务停止)
     // 最常用的模式就是用变量名去匹配表达式返回的值, 然后该变量就可以在结果处理环节使用
@@ -107,6 +191,47 @@ async fn select() {
             bar_ret = bar() => bar_ret,
         };
         println!("ret got: {}", ret);
+    }
+
+    // 4. select! 的错误处理
+    // 在 Rust 中使用 ? 可以对错误进行传播, 但是在 select! 中
+    // ? 如何工作取决于它是在分支中的 async 表达式使用还是在结果处理的代码中使用:
+    // + 在分支中 async 表达式使用会将该表达式的结果变成一个 Result
+    // + 在结果处理中使用, 会将错误 "直接传播到 select! 之外"
+    {
+        async fn foo() -> Result<(), String> {
+            Err("()".to_string())
+        }
+
+        async fn bar() -> Result<(), String> {
+            tokio::select! {
+                res = foo() => {
+                    // **错误直接传递到 select! 外部的函数上**
+                    let r = res?;
+                    Ok(r)
+                }
+            }
+        }
+    }
+
+    // 5. 模式匹配
+    // 既然是模式匹配, 我们需要再来回忆下 select! 的分支语法形式:
+    // " <模式> = <async 表达式> => <结果处理> ""
+    // 迄今为止, 我们只用了变量绑定的模式. 事实上, 任何 Rust 模式都可以在此处使用
+    {
+        let (_tx, mut rx): (Sender<i32>, Receiver<i32>) = mpsc::channel(1);
+
+        // 我们可以看到: 我们还可以进行 Some 的模式匹配
+        // 同时我们使用 else 作为最后的 "匹配守卫"
+        // else 代表: 当上面的所有分支都不匹配, 则最后走到 else 分支上
+        tokio::select! {
+            Some(v) = rx.recv() => {
+                println!("receive some value: {v}");
+            }
+            else => {
+                println!("no value!")
+            }
+        };
     }
 }
 
@@ -173,7 +298,7 @@ impl Future for Delay {
             let mut waker = waker.lock().unwrap();
 
             // 由于 Future poll() 也许会应用到在两个不同的 Waker 上(其实就是 Future 被转移到另外一个任务中)
-            // 然后存储的 waker 被该任务进行了更新
+            // 然后存储的 waker 被该任务进行了更新(新的执行器使用了新的 Context, 新的 Context 的 Waker 和原来的不一样!)
             //
             // 所以我们需要检测当前 poll() 的 Waker 是否与已经保存的 Waker 是同一个, 如果不是就更新
             // 因为我们需要唤醒最新的 Waker
@@ -195,7 +320,7 @@ impl Future for Delay {
 
                 // 通知执行器再次 poll
                 let waker = waker.lock().unwrap();
-                waker.wake_by_ref();
+                waker.wake_by_ref(); // wake_by_ref: 唤醒与当前任务相关的 waker, 并且不消耗 waker(因为是引用)
             });
         }
 

@@ -31,6 +31,7 @@ dependencies = [
  "pingora",
  "thread_local",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
